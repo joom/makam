@@ -101,14 +101,158 @@ let tempoMultAtStart = 1;
 let seekedOffsetSec = 0; // remembered seek position for next play
 
 // --- Element refs ---
-const makamFilter = document.getElementById('makam-filter');
-const songSelect = document.getElementById('song-select');
+const makamInput = document.getElementById('makam-filter');
+const songInput = document.getElementById('song-select');
 const transposeInput = document.getElementById('transpose');
 const tempoMultInput = document.getElementById('tempo-mult');
 const playBtn = document.getElementById('play');
 const pauseBtn = document.getElementById('pause');
 const stopBtn = document.getElementById('stop');
 const tabContainer = document.getElementById('tab-container');
+
+// --- Typeahead combobox ---
+// Fuzzy-matching dropdown attached to a text input. Ranks matches by:
+//   exact (3) > prefix (2+) > substring (1 + position bonus) > subsequence (0.5).
+// Turkish diacritics are folded to ASCII so the user can type "sarki" and match "Şarkı".
+function foldDiacritics(s) {
+  return s.toLowerCase()
+    .replace(/[çĉ]/g, 'c').replace(/[ğ]/g, 'g')
+    .replace(/[ıîï]/g, 'i').replace(/[öô]/g, 'o')
+    .replace(/[şŝ]/g, 's').replace(/[üû]/g, 'u')
+    .replace(/[âä]/g, 'a').replace(/[éêë]/g, 'e');
+}
+
+function fuzzyScore(haystack, needle) {
+  if (!needle) return 1;
+  const h = foldDiacritics(haystack);
+  const n = foldDiacritics(needle);
+  if (h === n) return 4;
+  if (h.startsWith(n)) return 3;
+  const idx = h.indexOf(n);
+  if (idx >= 0) return 2 + 1 / (idx + 1);
+  // Subsequence: every needle char appears in order.
+  let hi = 0;
+  for (let ni = 0; ni < n.length; ni++) {
+    hi = h.indexOf(n[ni], hi);
+    if (hi < 0) return 0;
+    hi++;
+  }
+  return 1;
+}
+
+// Create a typeahead over `getItems() -> [{value, label, search}]`.
+// Calls `onSelect(value)` when the user commits a choice.
+function makeCombo({ input, list, getItems, onSelect, emptyOption }) {
+  let currentValue = '';
+  let currentLabel = '';
+  let activeIdx = 0;
+  let lastRendered = [];
+  const MAX_VISIBLE = 200;
+
+  function labelFor(value) {
+    if (emptyOption && value === '') return emptyOption.label;
+    const hit = getItems().find(it => it.value === value);
+    return hit ? hit.label : '';
+  }
+
+  function setValue(value, { fire = false } = {}) {
+    currentValue = value;
+    currentLabel = labelFor(value);
+    input.value = currentLabel;
+    if (fire) onSelect(currentValue);
+  }
+
+  function filter(query) {
+    const items = getItems().slice();
+    if (emptyOption) items.unshift(emptyOption);
+    if (!query.trim()) return items;
+    const scored = [];
+    for (const it of items) {
+      const score = fuzzyScore(it.search || it.label, query);
+      if (score > 0) scored.push({ it, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    return scored.map(s => s.it);
+  }
+
+  function render() {
+    const query = input.value === currentLabel ? '' : input.value;
+    lastRendered = filter(query).slice(0, MAX_VISIBLE);
+    list.innerHTML = '';
+    if (!lastRendered.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'No matches';
+      list.appendChild(li);
+      return;
+    }
+    if (activeIdx >= lastRendered.length) activeIdx = 0;
+    lastRendered.forEach((it, i) => {
+      const li = document.createElement('li');
+      li.textContent = it.label;
+      li.dataset.value = it.value;
+      if (i === activeIdx) li.classList.add('active');
+      li.addEventListener('mousedown', e => {
+        e.preventDefault(); // keep focus so blur-close doesn't fire first
+        setValue(it.value, { fire: true });
+        closeList();
+      });
+      list.appendChild(li);
+    });
+    // Scroll active into view.
+    const active = list.children[activeIdx];
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  function openList() {
+    list.hidden = false;
+    activeIdx = 0;
+    render();
+  }
+  function closeList() {
+    list.hidden = true;
+    input.value = currentLabel;
+  }
+
+  input.addEventListener('focus', () => {
+    input.select();
+    openList();
+  });
+  input.addEventListener('input', () => {
+    activeIdx = 0;
+    list.hidden = false;
+    render();
+  });
+  input.addEventListener('blur', () => setTimeout(closeList, 120));
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') {
+      if (list.hidden) openList();
+      else { activeIdx = Math.min(activeIdx + 1, lastRendered.length - 1); render(); }
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      activeIdx = Math.max(0, activeIdx - 1);
+      render();
+      e.preventDefault();
+    } else if (e.key === 'Enter') {
+      const it = lastRendered[activeIdx];
+      if (it) {
+        setValue(it.value, { fire: true });
+        closeList();
+        input.blur();
+      }
+      e.preventDefault();
+    } else if (e.key === 'Escape') {
+      closeList();
+      input.blur();
+    }
+  });
+
+  return {
+    setValue,
+    get value() { return currentValue; },
+    refresh() { if (!list.hidden) render(); },
+  };
+}
 
 // --- Init ---
 const LS_MAKAM = 'fretless.makam';
@@ -125,6 +269,9 @@ function applyInstrument(id) {
   transposeInput.value = inst.defaultTranspose;
 }
 
+let makamCombo = null;
+let songCombo = null;
+
 async function init() {
   // Populate instrument selector.
   for (const [id, inst] of Object.entries(INSTRUMENTS)) {
@@ -138,25 +285,59 @@ async function init() {
 
   const res = await fetch('songs.json');
   songs = await res.json();
-  const makams = [...new Set(songs.map(s => s.makam))].sort();
-  for (const m of makams) {
-    const opt = document.createElement('option');
-    opt.value = m; opt.textContent = m;
-    makamFilter.appendChild(opt);
+
+  // Makam combobox: deduped list of makam slugs; "" means no filter.
+  const makamLabels = new Map();
+  for (const s of songs) {
+    if (!makamLabels.has(s.makam)) makamLabels.set(s.makam, s.makamDisplay || s.makam);
   }
+  const makamItems = [...makamLabels.entries()]
+    .map(([value, label]) => ({ value, label, search: `${label} ${value}` }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+
+  makamCombo = makeCombo({
+    input: makamInput,
+    list: makamInput.nextElementSibling,
+    getItems: () => makamItems,
+    emptyOption: { value: '', label: 'All', search: 'all' },
+    onSelect: value => {
+      localStorage.setItem(LS_MAKAM, value);
+      populateSongs();
+    },
+  });
+
+  // Song combobox: items depend on the currently selected makam filter.
+  songCombo = makeCombo({
+    input: songInput,
+    list: songInput.nextElementSibling,
+    getItems: () => {
+      const m = makamCombo ? makamCombo.value : '';
+      const pool = m ? songs.filter(s => s.makam === m) : songs;
+      return pool.map(s => {
+        const makam = s.makamDisplay || s.makam;
+        const form = s.formDisplay || s.form;
+        const name = s.nameDisplay || s.name;
+        const composer = s.composerDisplay || s.composer;
+        const label = `[${makam}] ${form}${name ? ' — ' + name : ''}${composer ? ' · ' + composer : ''}`;
+        const search = `${label} ${s.filename}`;
+        return { value: s.filename, label, search };
+      });
+    },
+    onSelect: value => {
+      localStorage.setItem(LS_SONG, value);
+      loadCurrent();
+    },
+  });
+
   // Restore last selection (if still valid).
   const savedMakam = localStorage.getItem(LS_MAKAM) || '';
-  if (savedMakam && makams.includes(savedMakam)) makamFilter.value = savedMakam;
-  const savedSong = localStorage.getItem(LS_SONG);
-  populateSongs(savedSong);
-  makamFilter.addEventListener('change', () => {
-    localStorage.setItem(LS_MAKAM, makamFilter.value);
-    populateSongs();
-  });
-  songSelect.addEventListener('change', () => {
-    localStorage.setItem(LS_SONG, songSelect.value);
-    loadCurrent();
-  });
+  if (savedMakam && makamLabels.has(savedMakam)) {
+    makamCombo.setValue(savedMakam);
+  } else {
+    makamCombo.setValue('');
+  }
+  populateSongs(localStorage.getItem(LS_SONG));
+
   instrumentSelect.addEventListener('change', () => {
     localStorage.setItem(LS_INSTRUMENT, instrumentSelect.value);
     applyInstrument(instrumentSelect.value);
@@ -187,20 +368,16 @@ async function init() {
 }
 
 function populateSongs(preferFilename) {
-  const m = makamFilter.value;
-  const list = m ? songs.filter(s => s.makam === m) : songs;
-  songSelect.innerHTML = '';
-  for (const s of list.slice(0, 500)) {
-    const opt = document.createElement('option');
-    opt.value = s.filename;
-    opt.textContent = `[${s.makam}] ${s.form} — ${s.name}${s.composer ? ' · ' + s.composer : ''}`;
-    songSelect.appendChild(opt);
-  }
-  // Prefer explicit filename (e.g. from localStorage on first load).
-  if (preferFilename && [...songSelect.options].some(o => o.value === preferFilename)) {
-    songSelect.value = preferFilename;
-  }
-  localStorage.setItem(LS_SONG, songSelect.value);
+  if (!songCombo) return;
+  const m = makamCombo ? makamCombo.value : '';
+  const pool = m ? songs.filter(s => s.makam === m) : songs;
+  if (!pool.length) return;
+  // Keep previous selection if it's in the filtered pool; otherwise pick first.
+  const candidate = preferFilename && pool.some(s => s.filename === preferFilename)
+    ? preferFilename
+    : pool[0].filename;
+  songCombo.setValue(candidate);
+  localStorage.setItem(LS_SONG, candidate);
   loadCurrent();
 }
 
@@ -244,7 +421,7 @@ function decodeNotes(buf, offset, count) {
 
 async function loadCurrent() {
   stop();
-  const filename = songSelect.value;
+  const filename = songCombo ? songCombo.value : '';
   if (!filename) return;
   const song = songs.find(s => s.filename === filename);
   if (!song) return;

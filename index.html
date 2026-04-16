@@ -42,10 +42,16 @@ fret = midi − open_string_midi</pre>
   </details>
   <div class="controls">
     <label>Makam
-      <select id="makam-filter"><option value="">All</option></select>
+      <div class="combo">
+        <input type="text" id="makam-filter" placeholder="All" autocomplete="off" spellcheck="false">
+        <ul class="combo-list" hidden></ul>
+      </div>
     </label>
     <label>Song
-      <select id="song-select"></select>
+      <div class="combo combo-wide">
+        <input type="text" id="song-select" placeholder="Search songs…" autocomplete="off" spellcheck="false">
+        <ul class="combo-list" hidden></ul>
+      </div>
     </label>
     <label>Instrument
       <select id="instrument"></select>

@@ -21,6 +21,27 @@ header {
 }
 .controls select { min-width: 150px; }
 .controls input[type=number] { width: 70px; }
+
+/* Typeahead combobox: styled like the other controls, with a floating match list. */
+.combo { position: relative; width: 180px; }
+.combo-wide { width: 360px; }
+.combo input { width: 100%; }
+.combo input:focus { outline: 1px solid #0a7; border-color: #0a7; }
+.combo-list {
+  position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 15;
+  margin: 0; padding: 4px 0; list-style: none;
+  background: #222; border: 1px solid #444; border-radius: 4px;
+  max-height: 320px; overflow-y: auto;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+}
+.combo-list li {
+  padding: 5px 10px; cursor: pointer; color: #eee;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.combo-list li.active, .combo-list li:hover { background: #0a7; color: #fff; }
+.combo-list li.empty { color: #666; cursor: default; font-style: italic; }
+.combo-list li.empty:hover { background: transparent; color: #666; }
 button {
   background: #0a7; color: #fff; border: none;
   padding: 6px 14px; border-radius: 3px; cursor: pointer; font-size: 13px;
