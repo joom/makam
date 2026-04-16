@@ -1,0 +1,5 @@
+.DS_Store
+
+# Raw SymbTr corpus — used only at build time, consumed by build-index.js
+# to produce data/*.bin. Not served in production.
+SymbTr-2.4/txt/

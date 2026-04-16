@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fretless · Turkish Makam</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <details id="explainer">
+    <summary><h1>Fretless · Turkish Makam</h1></summary>
+    <div class="explainer-body">
+      <p>
+        Turkish makam divides the octave into <strong>53 equal commas</strong> (~22.64 cents each),
+        not 12 semitones. The <a href="https://github.com/MTG/SymbTr" target="_blank" rel="noopener">SymbTr corpus</a>
+        stores each note as an integer <strong>Koma53</strong> value, anchored at
+        <code>C5&nbsp;=&nbsp;318</code>.
+      </p>
+      <pre>midi = 72 + (koma − 318) × 12 / 53
+fret = midi − open_string_midi</pre>
+      <p>
+        The fret is fractional because the MIDI value is — so "9.08" means press 9.08
+        semitones' worth up from the nut. Nothing is rounded. The neck above uses real
+        logarithmic spacing (<code>distance = scale × (1 − 2<sup>−fret/12</sup></code>)),
+        so dots land exactly where your finger goes.
+      </p>
+    </div>
+  </details>
+  <div class="controls">
+    <label>Makam
+      <select id="makam-filter"><option value="">All</option></select>
+    </label>
+    <label>Song
+      <select id="song-select"></select>
+    </label>
+    <label>Instrument
+      <select id="instrument"></select>
+    </label>
+    <label>Transpose (semitones)
+      <input type="number" id="transpose" value="-24" step="1">
+    </label>
+    <label>Tempo ×
+      <input type="number" id="tempo-mult" value="1" step="0.1" min="0.1">
+    </label>
+    <button id="play">▶ Play</button>
+    <button id="pause">⏸ Pause</button>
+    <button id="stop">■ Stop</button>
+  </div>
+  <div id="meta"></div>
+</header>
+<main>
+  <aside id="neck-panel"><svg id="neck-svg"></svg></aside>
+  <div id="tab-container"></div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

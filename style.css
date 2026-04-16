@@ -1,0 +1,90 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #1a1a1a;
+  color: #eee;
+}
+header {
+  padding: 12px 20px;
+  background: #222;
+  border-bottom: 1px solid #333;
+  position: sticky; top: 0; z-index: 10;
+}
+h1 { margin: 0 0 10px; font-size: 18px; font-weight: 500; }
+.controls {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.controls label { display: flex; flex-direction: column; font-size: 11px; color: #aaa; }
+.controls select, .controls input {
+  background: #333; color: #eee; border: 1px solid #444;
+  padding: 4px 6px; border-radius: 3px; font-size: 13px;
+}
+.controls select { min-width: 150px; }
+.controls input[type=number] { width: 70px; }
+button {
+  background: #0a7; color: #fff; border: none;
+  padding: 6px 14px; border-radius: 3px; cursor: pointer; font-size: 13px;
+  align-self: flex-end; transition: opacity 0.15s;
+}
+button:hover { background: #0c8; }
+button:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+#pause { background: #c90; } #pause:hover { background: #da0; }
+#stop { background: #a33; } #stop:hover { background: #c44; }
+#meta { margin-top: 8px; font-size: 12px; color: #888; }
+#explainer { font-size: 13px; color: #ccc; }
+#explainer summary { cursor: pointer; list-style: none; }
+#explainer summary::-webkit-details-marker { display: none; }
+#explainer summary h1 { display: inline; }
+#explainer summary:hover h1 { color: #0a7; }
+.explainer-body { max-width: 720px; line-height: 1.6; padding: 8px 0; }
+.explainer-body h3 { margin: 14px 0 4px; font-size: 14px; color: #eee; }
+.explainer-body p { margin: 4px 0 10px; }
+.explainer-body pre {
+  background: #1a1a1a; padding: 8px 12px; border-radius: 4px;
+  font-size: 13px; color: #0c8; overflow-x: auto;
+}
+.explainer-body code { color: #0c8; }
+.explainer-body a { color: #0c8; }
+.explainer-body a:hover { color: #0fa; }
+main {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* Fill viewport below header so the tab area can scroll independently. */
+  height: calc(100vh - 110px);
+}
+#neck-panel {
+  flex: 0 0 auto;
+  padding: 12px 20px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+#neck-svg { display: block; width: 100%; }
+#tab-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+}
+#neck-svg { background: #2a1a0a; border-radius: 6px; }
+.neck-wood { fill: #3a2410; }
+.neck-string { stroke: #b89060; stroke-width: 1.5; }
+.neck-fret { stroke: #888; stroke-width: 1; }
+.neck-fret-nut { stroke: #ddd; stroke-width: 3; }
+.neck-marker { fill: #6a4a28; }
+.neck-label { fill: #888; font-family: monospace; font-size: 10px; }
+.neck-dot { fill: #fff; stroke: #000; stroke-width: 1.5; }
+.neck-dot-active { fill: #e33; stroke: #000; stroke-width: 1.5; }
+svg { display: block; background: #111; border-radius: 4px; }
+.string-line { stroke: #555; stroke-width: 1; }
+.note-text { fill: #eee; font-family: monospace; font-size: inherit; text-anchor: middle; dominant-baseline: middle; }
+.note-bg { fill: #222; stroke: #0a7; stroke-width: 1; cursor: pointer; }
+.note-text { cursor: pointer; }
+.note-rest { fill: #555; }
+.note-oor { fill: #c66; }
+.string-label { fill: #0a7; font-family: monospace; font-size: 13px; font-weight: bold; }
+.cursor { stroke: #f44; stroke-width: 2; }
+.measure-bar { stroke: #333; stroke-width: 1; }
+.measure-num { fill: #666; font-family: monospace; font-size: 10px; }
