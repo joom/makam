@@ -108,7 +108,6 @@ const tempoMultInput = document.getElementById('tempo-mult');
 const playBtn = document.getElementById('play');
 const pauseBtn = document.getElementById('pause');
 const stopBtn = document.getElementById('stop');
-const metaDiv = document.getElementById('meta');
 const tabContainer = document.getElementById('tab-container');
 
 // --- Init ---
@@ -249,7 +248,6 @@ async function loadCurrent() {
   if (!filename) return;
   const song = songs.find(s => s.filename === filename);
   if (!song) return;
-  metaDiv.textContent = `${song.makam} · ${song.form} · usul: ${song.usul} · ${song.name}${song.composer ? ' — ' + song.composer : ''}`;
   const buf = await getBundle(song.makam);
   decodeNotes(buf, song.offset, song.count);
   renderTab();
